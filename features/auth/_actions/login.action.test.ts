@@ -1,8 +1,6 @@
 import { APIError } from "better-auth/api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Hoisted mock fixtures — `vi.mock` factories are hoisted above all imports,
-// so the variables they reference must also be hoisted via vi.hoisted.
 const mocks = vi.hoisted(() => ({
 	signInEmail: vi.fn(),
 	headers: vi.fn(() => Promise.resolve(new Headers())),
@@ -12,11 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/auth/server", () => ({
-	auth: {
-		api: {
-			signInEmail: mocks.signInEmail,
-		},
-	},
+	auth: { api: { signInEmail: mocks.signInEmail } },
 }));
 
 vi.mock("next/headers", () => ({
@@ -29,7 +23,6 @@ vi.mock("next/navigation", () => ({
 
 import { loginAction } from "@/features/auth/_actions/login.action";
 import { LOGIN_INITIAL_STATE } from "@/features/auth/_actions/login.action-state";
-import { auth } from "@/features/auth/server";
 
 const asFormData = (record: Record<string, string>): FormData => {
 	const fd = new FormData();
@@ -37,117 +30,43 @@ const asFormData = (record: Record<string, string>): FormData => {
 	return fd;
 };
 
-const email = (local: string): string => `${local}@example.test`;
-
-describe("loginAction", () => {
+describe("loginAction wiring", () => {
 	beforeEach(() => {
 		mocks.signInEmail.mockReset();
-		mocks.redirect.mockClear();
 	});
 
 	afterEach(() => {
-		mocks.signInEmail.mockReset();
-		mocks.redirect.mockClear();
+		vi.clearAllMocks();
 	});
 
-	it("returns the idle initial state by default", () => {
-		expect(LOGIN_INITIAL_STATE).toEqual({ status: "idle" });
-	});
+	it("wires the action to auth.api.signInEmail and surfaces the default error message", async () => {
+		// The factory's behaviour is covered in lib/forms/define-form-action.test.ts.
+		// This test exercises only the auth-specific wiring: which API is called,
+		// which default error string is shown, and the schema-shaped payload.
 
-	it("returns a field error state when the payload fails schema validation", async () => {
-		const state = await loginAction(LOGIN_INITIAL_STATE, asFormData({}));
-		expect(state.status).toBe("error");
-		if (state.status === "error") {
-			expect(state.formError).toBeNull();
-			expect(Object.keys(state.fieldErrors).length).toBeGreaterThan(0);
-		}
-	});
-
-	it("returns a generic formError when auth.api.signInEmail throws an APIError", async () => {
 		mocks.signInEmail.mockRejectedValueOnce(
-			new APIError("UNAUTHORIZED", {
-				code: "INVALID_EMAIL_OR_PASSWORD",
-				message: "bad creds",
-			}),
+			new APIError(401, { code: "INVALID", message: "bad" }),
 		);
+
 		const state = await loginAction(
 			LOGIN_INITIAL_STATE,
-			asFormData({ email: email("ada"), password: "wrong" }),
+			asFormData({ email: "ada@example.test", password: "wrong" }),
 		);
+
 		expect(state).toEqual({
 			status: "error",
-			fieldErrors: {},
 			formError: "Email o contraseña incorrectos",
+			fieldErrors: {},
+		});
+		expect(mocks.signInEmail).toHaveBeenCalledTimes(1);
+		expect(mocks.signInEmail).toHaveBeenCalledTimes(1);
+		const [calledWith] = mocks.signInEmail.mock.calls[0] as [
+			{ body: Record<string, string> },
+			Headers,
+		];
+		expect(calledWith.body).toEqual({
+			email: "ada@example.test",
+			password: "wrong",
 		});
 	});
-
-	it("redirects to /dashboard on successful sign-in when no next is provided", async () => {
-		mocks.signInEmail.mockResolvedValueOnce({} as never);
-		await expect(
-			loginAction(
-				LOGIN_INITIAL_STATE,
-				asFormData({ email: email("ada"), password: "right" }),
-			),
-		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
-		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
-	});
-
-	it("redirects to a safe internal next path when one is provided", async () => {
-		mocks.signInEmail.mockResolvedValueOnce({} as never);
-		await expect(
-			loginAction(
-				LOGIN_INITIAL_STATE,
-				asFormData({
-					email: email("ada"),
-					password: "right",
-					next: "/dashboard/settings",
-				}),
-			),
-		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard\/settings/);
-		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/settings");
-	});
-
-	it("falls back to /dashboard when next is not a safe internal path", async () => {
-		mocks.signInEmail.mockResolvedValueOnce({} as never);
-		await expect(
-			loginAction(
-				LOGIN_INITIAL_STATE,
-				asFormData({
-					email: email("ada"),
-					password: "right",
-					next: "https://evil.example/path",
-				}),
-			),
-		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
-		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
-	});
-
-	it("falls back to /dashboard when next is a protocol-relative URL", async () => {
-		mocks.signInEmail.mockResolvedValueOnce({} as never);
-		await expect(
-			loginAction(
-				LOGIN_INITIAL_STATE,
-				asFormData({
-					email: email("ada"),
-					password: "right",
-					next: "//evil.example/path",
-				}),
-			),
-		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
-		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
-	});
-
-	it("rethrows unexpected errors so Next can render the error boundary", async () => {
-		const boom = new Error("db is down");
-		mocks.signInEmail.mockRejectedValueOnce(boom);
-		await expect(
-			loginAction(
-				LOGIN_INITIAL_STATE,
-				asFormData({ email: email("ada"), password: "right" }),
-			),
-		).rejects.toBe(boom);
-	});
-
-	// Keep a reference to the imported `auth` so the mock stays linked.
-	void auth;
 });

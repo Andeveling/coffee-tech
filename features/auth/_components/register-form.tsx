@@ -9,20 +9,15 @@ import { Input } from "@/components/ui/input";
 import { registerAction } from "@/features/auth/_actions/register.action";
 import {
 	REGISTER_INITIAL_STATE,
-	type RegisterActionState,
+	registerHasError,
 } from "@/features/auth/_actions/register.action-state";
-
-const hasError = (
-	state: RegisterActionState,
-): state is Extract<RegisterActionState, { status: "error" }> =>
-	state.status === "error";
 
 export const RegisterForm = ({ next }: { next: string | null }) => {
 	const [state, formAction, isPending] = useActionState(
 		registerAction,
 		REGISTER_INITIAL_STATE,
 	);
-	const err = hasError(state) ? state : null;
+	const err = registerHasError(state) ? state : null;
 
 	return (
 		<form action={formAction} className="flex flex-col gap-4">

@@ -9,20 +9,15 @@ import { Input } from "@/components/ui/input";
 import { loginAction } from "@/features/auth/_actions/login.action";
 import {
 	LOGIN_INITIAL_STATE,
-	type LoginActionState,
+	loginHasError,
 } from "@/features/auth/_actions/login.action-state";
-
-const hasError = (
-	state: LoginActionState,
-): state is Extract<LoginActionState, { status: "error" }> =>
-	state.status === "error";
 
 export const LoginForm = ({ next }: { next: string | null }) => {
 	const [state, formAction, isPending] = useActionState(
 		loginAction,
 		LOGIN_INITIAL_STATE,
 	);
-	const err = hasError(state) ? state : null;
+	const err = loginHasError(state) ? state : null;
 
 	return (
 		<form action={formAction} className="flex flex-col gap-4">

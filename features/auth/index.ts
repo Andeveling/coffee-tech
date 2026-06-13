@@ -12,11 +12,6 @@ export {
 	type RegisterInput,
 	registerSchema,
 } from "@/features/auth/_schemas/register.schema";
-export { formDataToRecord } from "@/features/auth/_utils/form-data.util";
-export {
-	type FormFieldErrors,
-	zodIssuesToFieldErrors,
-} from "@/features/auth/_utils/zod-issues.util";
 export {
 	authClient,
 	signIn,

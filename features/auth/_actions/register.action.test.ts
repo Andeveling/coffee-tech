@@ -10,11 +10,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/auth/server", () => ({
-	auth: {
-		api: {
-			signUpEmail: mocks.signUpEmail,
-		},
-	},
+	auth: { api: { signUpEmail: mocks.signUpEmail } },
 }));
 
 vi.mock("next/headers", () => ({
@@ -27,7 +23,6 @@ vi.mock("next/navigation", () => ({
 
 import { registerAction } from "@/features/auth/_actions/register.action";
 import { REGISTER_INITIAL_STATE } from "@/features/auth/_actions/register.action-state";
-import { auth } from "@/features/auth/server";
 
 const asFormData = (record: Record<string, string>): FormData => {
 	const fd = new FormData();
@@ -35,111 +30,78 @@ const asFormData = (record: Record<string, string>): FormData => {
 	return fd;
 };
 
-const email = (local: string): string => `${local}@example.test`;
-
 const valid = {
 	name: "Ada",
-	email: email("ada"),
+	email: "ada@example.test",
 	password: "supersecret",
 	confirmPassword: "supersecret",
 };
 
-describe("registerAction", () => {
+describe("registerAction wiring", () => {
 	beforeEach(() => {
 		mocks.signUpEmail.mockReset();
-		mocks.redirect.mockClear();
 	});
 
 	afterEach(() => {
-		mocks.signUpEmail.mockReset();
-		mocks.redirect.mockClear();
+		vi.clearAllMocks();
 	});
 
-	it("returns the idle initial state by default", () => {
-		expect(REGISTER_INITIAL_STATE).toEqual({ status: "idle" });
-	});
+	it("strips confirmPassword before calling auth.api.signUpEmail", async () => {
+		mocks.signUpEmail.mockResolvedValueOnce({});
 
-	it("returns field errors when the payload fails schema validation", async () => {
-		const state = await registerAction(
-			REGISTER_INITIAL_STATE,
-			asFormData({ email: "x", password: "y", confirmPassword: "z", name: "" }),
-		);
-		expect(state.status).toBe("error");
-		if (state.status === "error") {
-			expect(state.formError).toBeNull();
-		}
-	});
+		await expect(
+			registerAction(
+				REGISTER_INITIAL_STATE,
+				asFormData({ ...valid, next: "/dashboard" }),
+			),
+		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
 
-	it("returns a field-level email error when USER_ALREADY_EXISTS", async () => {
-		mocks.signUpEmail.mockRejectedValueOnce(
-			new APIError("CONFLICT", { code: "USER_ALREADY_EXISTS", message: "dup" }),
-		);
-		const state = await registerAction(
-			REGISTER_INITIAL_STATE,
-			asFormData(valid),
-		);
-		expect(state).toEqual({
-			status: "error",
-			fieldErrors: { email: "Este email ya está registrado" },
-			formError: null,
+		expect(mocks.signUpEmail).toHaveBeenCalledTimes(1);
+		const [calledWith] = mocks.signUpEmail.mock.calls[0] as [
+			{ body: Record<string, string> },
+			Headers,
+		];
+		expect(calledWith.body).toEqual({
+			name: valid.name,
+			email: valid.email,
+			password: valid.password,
 		});
 	});
 
-	it("returns the APIError message in formError for other auth failures", async () => {
+	it("maps USER_ALREADY_EXISTS to a field-level email error", async () => {
 		mocks.signUpEmail.mockRejectedValueOnce(
-			new APIError("BAD_REQUEST", {
-				code: "SOMETHING_ELSE",
-				message: "rate-limited",
+			new APIError(409, {
+				code: "USER_ALREADY_EXISTS",
+				message: "exists",
 			}),
 		);
+
 		const state = await registerAction(
 			REGISTER_INITIAL_STATE,
 			asFormData(valid),
 		);
-		expect(state.status).toBe("error");
-		if (state.status === "error") {
-			expect(state.fieldErrors).toEqual({});
-			expect(state.formError).toBe("rate-limited");
-		}
+
+		expect(state).toEqual({
+			status: "error",
+			formError: null,
+			fieldErrors: { email: "Este email ya está registrado" },
+		});
 	});
 
-	it("redirects to /dashboard on successful sign-up when no next is provided", async () => {
-		mocks.signUpEmail.mockResolvedValueOnce({} as never);
-		await expect(
-			registerAction(REGISTER_INITIAL_STATE, asFormData(valid)),
-		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
-		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
-	});
+	it("surfaces the mapped APIError message for other auth failures", async () => {
+		mocks.signUpEmail.mockRejectedValueOnce(
+			new APIError(500, { code: "BOOM", message: "server down" }),
+		);
 
-	it("redirects to a safe internal next path when one is provided", async () => {
-		mocks.signUpEmail.mockResolvedValueOnce({} as never);
-		await expect(
-			registerAction(
-				REGISTER_INITIAL_STATE,
-				asFormData({ ...valid, next: "/dashboard/billing" }),
-			),
-		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard\/billing/);
-		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/billing");
-	});
+		const state = await registerAction(
+			REGISTER_INITIAL_STATE,
+			asFormData(valid),
+		);
 
-	it("falls back to /dashboard when next is not a safe internal path", async () => {
-		mocks.signUpEmail.mockResolvedValueOnce({} as never);
-		await expect(
-			registerAction(
-				REGISTER_INITIAL_STATE,
-				asFormData({ ...valid, next: "https://evil.example/x" }),
-			),
-		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
-		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
+		expect(state).toEqual({
+			status: "error",
+			formError: "server down",
+			fieldErrors: {},
+		});
 	});
-
-	it("rethrows unexpected errors so Next can render the error boundary", async () => {
-		const boom = new Error("db is down");
-		mocks.signUpEmail.mockRejectedValueOnce(boom);
-		await expect(
-			registerAction(REGISTER_INITIAL_STATE, asFormData(valid)),
-		).rejects.toBe(boom);
-	});
-
-	void auth;
 });

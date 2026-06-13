@@ -11,11 +11,7 @@ This skill is the AI-readable companion to the "Folder & File Conventions" secti
 
 | Zone        | Path             | Purpose                                                                 |
 | ----------- | ---------------- | ----------------------------------------------------------------------- |
-| Routing     | `app/`           | Thin routes, layouts, route handlers, error/loading/not-found. No logic. |
-| Domain      | `features/<x>/`  | All product logic for a capability. Co-located slices.                 |
-| Infrastructure | `lib/`         | Generic, framework-agnostic helpers. No domain code.                    |
-
-A file that holds business logic does **not** live in `app/`. A file that holds a generic helper does **not** live in `features/`.
+| Infrastructure | `lib/`         | Generic, framework-agnostic helpers. No domain code. Sub-folders allowed for cross-cutting concerns (e.g. `lib/forms/` for form-orchestration primitives). |
 
 ## 2. `app/` — routing only
 
@@ -90,14 +86,40 @@ features/<x>/
 - Public vars (`NEXT_PUBLIC_*`): live in `lib/public-env.ts`, validated separately, accessible to client code.
 - `.env.example` mirrors both schemas.
 
-## 9. Forms + actions
+## 9. Form orchestration — `lib/forms/`
 
-- **Schemas** in `features/<x>/_schemas/<name>.schema.ts`. Client-safe (no DB, no Node API). Consumed by the form (client) and the action (server).
-- **Server actions** in `features/<x>/_actions/<name>.action.ts`. Begin with `"use server"` and `import "server-only"`. Run `schema.safeParse(input)` first; on failure return field errors; on success do the work and redirect or return data.
-- **Action result shape** — depends on the consumer:
-  - **Consumed by `useActionState`** → `{ status: "idle" } | { status: "error"; formError: string | null; fieldErrors: Partial<Record<keyof TInput, string>> }`. The "idle" arm is what `useActionState` needs as initial state; the "error" arm carries the discriminated payload.
-  - **Consumed programmatically** (e.g. fire-and-forget, server-to-server) → `{ ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string[]> }`.
-- **Client form** uses `useActionState(action, INITIAL_STATE)` and renders `fieldErrors[name]` per field. Unexpected errors (network, 500) surface via a global toast.
+Cross-feature helpers for the "form + action" flow consumed by `useActionState`. The factory **is the only way new forms should be wired** — there is no ad-hoc pattern.
+
+### `lib/forms/define-form-action.ts`
+
+Factory that hides the full `parse → call → map error → redirect` sequence and returns a `FormActionBundle` (`{ action, initialState, hasError, State }`). Marked `import "server-only"` because it pulls in `next/headers` and `next/navigation`.
+
+### `lib/forms/is-safe-next-path.ts`
+
+Open-redirect validator. Kept as a standalone, white-box-tested security primitive — **not** absorbed into the factory. The primitive's guarantee is independent of the form flow; tests assert on the contract, not the orchestrator.
+
+### When to use `defineFormAction`
+
+For every form that posts to a server action. Schema lives in `features/<x>/_schemas/`, the action file in `features/<x>/_actions/<name>.action.ts`, the form component in `features/<x>/_components/`. The action file is restricted to async function exports (per `"use server"` rules); the state type, initial state, and type guard live in a sibling `<name>.action-state.ts` file.
+
+### Usage shape
+
+```ts
+// features/<x>/_actions/<name>.action.ts
+"use server";
+export const xAction = defineFormAction<z.infer<typeof xSchema>>({
+  schema: xSchema,
+  buildBody: (v) => v,                       // optional shape transform
+  call: (body, headers) => api.do(x, body, headers),
+  defaultFormError: "default error message",
+  mapApiError: (err) => /* optional { formError, fieldErrors } | null */,
+}).action;
+```
+
+### Action result shape — depends on the consumer
+
+- **For `useActionState` consumers** (forms): `{ status: "idle" } | { status: "error"; formError: string | null; fieldErrors: Partial<Record<keyof TIn, string>> }`. Derived from the schema passed to the factory — `fieldErrors` keys are auto-inferred.
+- **For programmatic consumers** (server-to-server, fire-and-forget): `{ ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string[]> }`. Define a separate thin action for that surface; do not reuse the form action.
 
 ## 10. Auth boundary — `proxy.ts`
 
@@ -108,25 +130,3 @@ features/<x>/
 - Defense in depth: `app/(private)/layout.tsx` re-checks the session server-side. The public layout does **not** re-check — the proxy already covers it.
 
 ## 11. Tests
-
-- **Unit/integration**: colocated, double suffix. `login.action.test.ts` next to `login.action.ts`. Greppable via `rg "\.action\.test\.ts"`.
-- **E2E**: under `e2e/`, suffix `.e2e.test.ts`. Excluded from the Vitest suite (Playwright runs them).
-- **Boilerplate coverage** (seed): env zod schemas, every feature's zod schemas, server actions (with DB mocked), pure utils, the safe-path validator, the cn helper.
-- **Skip** component testing by default — React Server Components complicate RTL; cover with E2E.
-
-## 12. Boundaries — error / loading / not-found
-
-- **Global + per-group fallback**. Per-route only when the UX demands it.
-- `app/global-error.tsx` must render its own `<html>` and `<body>` (the root layout is gone at that point).
-- Server action errors return a discriminated union; never throw across the boundary unless it is genuinely unexpected (then the error boundary catches it).
-
-## Quick rules-of-thumb
-
-- Adding a server action? → `features/<x>/_actions/<name>.action.ts` with `"use server"` + `import "server-only"`.
-- Adding a Zod schema? → `features/<x>/_schemas/<name>.schema.ts`. Client-safe.
-- Adding a component to a feature? → `features/<x>/_components/<name>.tsx`. Arrow + named export.
-- Adding a generic helper? → `lib/<name>.util.ts`. Two features need it? Still `lib/` (if generic) or extract a new feature (if domain).
-- Adding a route? → `app/(public)/<route>/page.tsx` or `app/(private)/<route>/page.tsx`. The page is a thin shell that imports the feature.
-- Adding env vars? → `lib/env.ts` (server) or `lib/public-env.ts` (client) + mirror in `.env.example`.
-- Adding a DB table? → `db/schema/<feature>.ts` + re-export from `db/schema/index.ts` + run `bun run db:generate`.
-- Unclear? Re-read `AGENTS.md` → "Folder & File Conventions". This skill is its mirror, not its replacement.

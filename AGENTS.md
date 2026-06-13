@@ -111,9 +111,9 @@ app/layout.tsx              ← html, body, providers (theme, toaster, query cli
   3. Client form: `useActionState(action, initialState)` + render de `fieldErrors[name]` por field.
 - **Zod schemas** son compartibles client↔server. La única rama server-only es la action que los ejecuta contra DB.
 
-- `lib/` = generic, framework-agnostic infra (`auth/`, `http/`, `utils/cn.ts`, `env.ts`).
+- `lib/` = generic, framework-agnostic infra (`auth/`, `http/`, `utils/cn.ts`, `env.ts`, `forms/`).
+- `lib/forms/` is the home for cross-feature form-orchestration primitives. Today: `define-form-action.ts` (factory) + `is-safe-next-path.ts` (open-redirect security primitive). New form-related primitives that more than one feature would need go here. The factory is the only way new forms should be wired — see `.agents/skills/project-architecture/SKILL.md` §9.
 - `lib/env.ts` validates process env with zod at module load. Marked `import "server-only"` so accidental client import fails the build. **Server-only vars** (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NODE_ENV`) live here.
-- `lib/public-env.ts` validates the **client-safe** env (`NEXT_PUBLIC_*`) in a separate file. The split is intentional: a module marked `import "server-only"` cannot also export client-safe values, so the public schema gets its own file. Exposed via a frozen `publicEnv` object.
 
 ### `db/` (persistence)
 
