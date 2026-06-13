@@ -1,0 +1,18 @@
+# Default owner for every change in this repo.
+* @Andeveling
+
+# Architectural docs require maintainer review.
+# A "fix typo in README" PR does NOT need this; a "change the slice folder
+# convention" PR does.
+/AGENTS.md @Andeveling
+/prds/ @Andeveling
+/issues/ @Andeveling
+
+# Security and persistence surface — load-bearing files that affect every
+# feature. Reordering or removing a line here can silently break cookies,
+# auth, or schema validation.
+/proxy.ts @Andeveling
+/lib/env.ts @Andeveling
+/lib/public-env.ts @Andeveling
+/lib/forms/ @Andeveling
+/db/ @Andeveling
