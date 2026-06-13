@@ -27,11 +27,27 @@ Prefix slice folders with `_` to mark them as private/colocated — never import
 | `_components/` | `<name>.tsx` | `features/auth/_components/login-form.tsx` |
 
 Rules:
-- **kebab-case** for every file and folder name.
+- **kebab-case** for every file and folder name (Linux filesystem is case-sensitive; kebab avoids `Foo.tsx` vs `foo.tsx` collisions).
 - **Dotted role suffix** identifies the slice type at a glance and is greppable (`rg "\.action\.ts"`).
 - **Components skip the suffix** — `.tsx` already identifies them; `login-form.component.tsx` adds noise.
 - **One entity per file** when the file represents a discrete unit (action, schema, query, hook, type). Co-locate closely related variants only when they share a non-trivial body.
 - **`index.ts` barrel** at the feature root exposes the public surface; import via `@/features/<name>` only.
+
+### Component export style
+
+- **Arrow functions only**: `export const Foo = (...) => { ... }`. No `export function Foo() {}` declarations.
+- **Named exports only**: no `export default`. The barrel `index.ts` re-exports explicitly.
+- **Export name**: PascalCase. File name kebab-case. `login-form.tsx` exports `LoginForm`.
+- **Subfolders**: keep `_components/` flat by default. Promote to subfolders **only when a component group grows genuinely complex** (e.g. a reactive multi-section form: `components/form/sections/inputs/...`). No pre-emptive grouping. Barrel the subfolder if it has 3+ siblings.
+
+### shadcn priority rule
+
+**Always check the shadcn registry first** before writing a UI component. The boilerplate ships shadcn (`components.json` configured for `base-maia` style on `@base-ui/react`).
+
+- Run `bunx --bun shadcn@latest add <component>` to install a primitive. It lands in `components/ui/<kebab>.tsx`.
+- `components/ui/` is **shadcn-owned**: don't hand-edit. To customize, copy the file and edit the copy in `features/<x>/_components/`.
+- If shadcn covers the need, use it. Build a custom component only when the primitive falls short (compose, don't reinvent).
+- Common primitives to favor: `button`, `input`, `field`, `form`, `select`, `dialog`, `dropdown-menu`, `sonner` (toast), `card`, `table`, `tabs`, `sheet`, `popover`, `tooltip`, `avatar`, `badge`, `checkbox`, `radio-group`, `switch`, `textarea`, `label`, `separator`, `skeleton`, `spinner`, `command`, `combobox`, `alert`, `alert-dialog`, `accordion`, `collapsible`, `breadcrumb`, `pagination`, `navigation-menu`, `sidebar`, `chart`.
 
 ### `app/` (routing only)
 
@@ -68,9 +84,37 @@ app/layout.tsx              ← html, body, providers (theme, toaster, query cli
     └── (private)/users/page.tsx
 ```
 
+### Boundaries — `error.tsx` / `loading.tsx` / `not-found.tsx`
+
+- Granularity: **global + per-group fallback**. Per-route only when a route truly needs distinct UX.
+  - `app/error.tsx` — global error boundary (client component, uses `reset` prop).
+  - `app/global-error.tsx` — catches errors in the root layout itself. Must define its own `<html><body>`.
+  - `app/not-found.tsx` — global 404.
+  - `app/(public)/error.tsx` and `app/(public)/not-found.tsx` — public-context UX (no sidebar).
+  - `app/(private)/error.tsx` and `app/(private)/not-found.tsx` — dashboard-context UX (preserves private chrome).
+- **Loading**: hybrid.
+  - `app/(<group>)/<route>/loading.tsx` for route transition (consistent skeleton during navigation).
+  - `<Suspense>` inside the feature for sub-pieces that fetch in parallel — React 19 makes this cheap.
+- **Server Action errors**: discriminated union returned from the action, not thrown across the boundary.
+  - Action signature: `async (input): Promise<{ ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string[]> }>`.
+  - Client consumes with `useActionState` (React 19) for form-level + field-level errors.
+  - Unexpected errors (network, 500) surfaced via a global toast (sonner or similar).
+
+### Form handling + validation flow
+
+- **Library**: `useActionState` (React 19) nativo. No `react-hook-form` ni `conform-to-zod` por default. Upgrade solo si un form lo demanda (formulario público multi-paso, progressive enhancement requerido).
+- **Validation pipeline**:
+  1. Zod schema en `features/<x>/_schemas/<name>.schema.ts`. Client-safe (no DB, no Node API) → se puede exportar vía `index.ts` (client barrel) si el form lo necesita para validación optimista.
+  2. Server action en `_actions/<name>.action.ts`, marcado `import "server-only"`:
+     - `schema.safeParse(input)` → si falla, return `{ ok: false, error: "Invalid input", fieldErrors: parsed.error.flatten().fieldErrors }`.
+     - Si pasa, ejecutar lógica y return `{ ok: true, data }`.
+  3. Client form: `useActionState(action, initialState)` + render de `fieldErrors[name]` por field.
+- **Zod schemas** son compartibles client↔server. La única rama server-only es la action que los ejecuta contra DB.
+
 ### `lib/` vs `features/`
 
 - `lib/` = generic, framework-agnostic infra (`auth/`, `http/`, `utils/cn.ts`, `env.ts`).
+- `lib/env.ts` validates process env with zod at module load. Marked `import "server-only"` so accidental client import fails the build. Public vars (`NEXT_PUBLIC_*`) live in a separate exported `publicEnv` object; server vars never reach the client. `.env.example` mirrors the schema for onboarding.
 - `features/<x>/` = domain logic tied to a product capability.
 - Cross-feature reuse: prefer extracting a new feature (`features/_shared/` is **forbidden** — it becomes a junk drawer). If two features need the same thing, it usually belongs in `lib/` or becomes its own feature consumed by both.
 
@@ -86,6 +130,17 @@ app/layout.tsx              ← html, body, providers (theme, toaster, query cli
   - `db/` exports only the schema, the drizzle client (`db/index.ts`), and seed scripts. No `db/queries/`.
 - **Migrations** (`db/migrations/*.sql`) are generated by `drizzle-kit` from the schema barrel. Never hand-edit; regenerate if the schema changes.
 - **Edge runtime rule**: `db/index.ts` imports the libsql client which uses Node APIs. **Never** import `db/` from `proxy.ts` or any Edge-only file. Proxy uses `auth.api.getSessionCookie()` for session checks.
+
+### Tests
+
+- **Location**: colocated for unit/integration; `e2e/` at the repo root for end-to-end.
+  - `features/<x>/_actions/login.action.test.ts` lives next to `login.action.ts`.
+  - `e2e/<flow>.e2e.test.ts` for Playwright flows.
+- **Naming**: double suffix when applicable — `login.action.test.ts`, `user.schema.test.ts`. Greppable by `rg "\.action\.test\.ts"`.
+- **Runner**: Vitest. Config at `vitest.config.ts`, setup at `vitest.setup.ts`. Compatible with bun.
+- **Component testing**: skip by default. React Server Components complicate RTL setup; cover with E2E instead.
+- **E2E**: Playwright. Config at `playwright.config.ts`. Browser flows for critical paths (login, signup, core CRUD).
+- **Boilerplate coverage** (initial seed): `lib/env.ts` zod schemas, every feature's zod schemas, server actions (with DB mocked), pure utils. Queries are covered by integration tests against a real DB in CI, not unit tests.
 
 ## Available Skills
 
