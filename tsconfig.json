@@ -19,7 +19,8 @@
 			}
 		],
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./*"],
+			"server-only": ["./test/server-only-stub.ts"]
 		},
 		"noEmit": true
 	},

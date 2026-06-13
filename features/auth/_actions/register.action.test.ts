@@ -25,10 +25,8 @@ vi.mock("next/navigation", () => ({
 	redirect: mocks.redirect,
 }));
 
-import {
-	REGISTER_INITIAL_STATE,
-	registerAction,
-} from "@/features/auth/_actions/register.action";
+import { registerAction } from "@/features/auth/_actions/register.action";
+import { REGISTER_INITIAL_STATE } from "@/features/auth/_actions/register.action-state";
 import { auth } from "@/features/auth/server";
 
 const asFormData = (record: Record<string, string>): FormData => {
@@ -105,10 +103,32 @@ describe("registerAction", () => {
 		}
 	});
 
-	it("redirects to /dashboard on successful sign-up", async () => {
+	it("redirects to /dashboard on successful sign-up when no next is provided", async () => {
 		mocks.signUpEmail.mockResolvedValueOnce({} as never);
 		await expect(
 			registerAction(REGISTER_INITIAL_STATE, asFormData(valid)),
+		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
+		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
+	});
+
+	it("redirects to a safe internal next path when one is provided", async () => {
+		mocks.signUpEmail.mockResolvedValueOnce({} as never);
+		await expect(
+			registerAction(
+				REGISTER_INITIAL_STATE,
+				asFormData({ ...valid, next: "/dashboard/billing" }),
+			),
+		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard\/billing/);
+		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/billing");
+	});
+
+	it("falls back to /dashboard when next is not a safe internal path", async () => {
+		mocks.signUpEmail.mockResolvedValueOnce({} as never);
+		await expect(
+			registerAction(
+				REGISTER_INITIAL_STATE,
+				asFormData({ ...valid, next: "https://evil.example/x" }),
+			),
 		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
 		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
 	});

@@ -3,24 +3,30 @@
 import { APIError } from "better-auth/api";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
+import type { RegisterActionState } from "@/features/auth/_actions/register.action-state";
 import {
 	type RegisterInput,
 	registerSchema,
 } from "@/features/auth/_schemas/register.schema";
 import { formDataToRecord } from "@/features/auth/_utils/form-data.util";
+import { isSafeNextPath } from "@/features/auth/_utils/safe-next-path.util";
 import { zodIssuesToFieldErrors } from "@/features/auth/_utils/zod-issues.util";
 import { auth } from "@/features/auth/server";
 
-export type RegisterActionState =
-	| { status: "idle" }
-	| {
-			status: "error";
-			formError: string | null;
-			fieldErrors: Partial<Record<keyof RegisterInput, string>>;
-	  };
-
-export const REGISTER_INITIAL_STATE: RegisterActionState = { status: "idle" };
-
+/**
+ * Server Action used by `useActionState` in `features/auth/_components/register-form.tsx`.
+ * The `"use server"` directive at the top of this file makes each exported
+ * function a Server Action — `useActionState` calls it via the framework's
+ * RPC; we never bundle the body into the client.
+ *
+ * On success the action redirects (throws NEXT_REDIRECT) — the returned
+ * `state` is irrelevant in that path.
+ *
+ * This file is restricted to async function exports: types and the
+ * initial-state constant live in `./register.action-state` so that
+ * `"use server"` does not see them.
+ */
 export const registerAction = async (
 	_prevState: RegisterActionState,
 	formData: FormData,
@@ -69,5 +75,6 @@ export const registerAction = async (
 		throw err;
 	}
 
-	redirect("/dashboard");
+	const rawNext = raw.next;
+	redirect(isSafeNextPath(rawNext) ? rawNext : "/dashboard");
 };

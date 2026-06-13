@@ -6,18 +6,18 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { loginAction } from "@/features/auth/_actions/login.action";
 import {
 	LOGIN_INITIAL_STATE,
 	type LoginActionState,
-	loginAction,
-} from "@/features/auth/_actions/login.action";
+} from "@/features/auth/_actions/login.action-state";
 
 const hasError = (
 	state: LoginActionState,
 ): state is Extract<LoginActionState, { status: "error" }> =>
 	state.status === "error";
 
-export const LoginForm = () => {
+export const LoginForm = ({ next }: { next: string | null }) => {
 	const [state, formAction, isPending] = useActionState(
 		loginAction,
 		LOGIN_INITIAL_STATE,
@@ -26,6 +26,7 @@ export const LoginForm = () => {
 
 	return (
 		<form action={formAction} className="flex flex-col gap-4">
+			{next ? <input type="hidden" name="next" value={next} /> : null}
 			<Field data-invalid={Boolean(err?.fieldErrors.email) || undefined}>
 				<FieldLabel htmlFor="email">Email</FieldLabel>
 				<Input

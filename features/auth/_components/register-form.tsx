@@ -6,18 +6,18 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { registerAction } from "@/features/auth/_actions/register.action";
 import {
 	REGISTER_INITIAL_STATE,
 	type RegisterActionState,
-	registerAction,
-} from "@/features/auth/_actions/register.action";
+} from "@/features/auth/_actions/register.action-state";
 
 const hasError = (
 	state: RegisterActionState,
 ): state is Extract<RegisterActionState, { status: "error" }> =>
 	state.status === "error";
 
-export const RegisterForm = () => {
+export const RegisterForm = ({ next }: { next: string | null }) => {
 	const [state, formAction, isPending] = useActionState(
 		registerAction,
 		REGISTER_INITIAL_STATE,
@@ -26,6 +26,7 @@ export const RegisterForm = () => {
 
 	return (
 		<form action={formAction} className="flex flex-col gap-4">
+			{next ? <input type="hidden" name="next" value={next} /> : null}
 			<Field data-invalid={Boolean(err?.fieldErrors.name) || undefined}>
 				<FieldLabel htmlFor="name">Nombre</FieldLabel>
 				<Input

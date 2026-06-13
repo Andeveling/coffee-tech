@@ -27,10 +27,8 @@ vi.mock("next/navigation", () => ({
 	redirect: mocks.redirect,
 }));
 
-import {
-	LOGIN_INITIAL_STATE,
-	loginAction,
-} from "@/features/auth/_actions/login.action";
+import { loginAction } from "@/features/auth/_actions/login.action";
+import { LOGIN_INITIAL_STATE } from "@/features/auth/_actions/login.action-state";
 import { auth } from "@/features/auth/server";
 
 const asFormData = (record: Record<string, string>): FormData => {
@@ -83,12 +81,57 @@ describe("loginAction", () => {
 		});
 	});
 
-	it("redirects to /dashboard on successful sign-in", async () => {
+	it("redirects to /dashboard on successful sign-in when no next is provided", async () => {
 		mocks.signInEmail.mockResolvedValueOnce({} as never);
 		await expect(
 			loginAction(
 				LOGIN_INITIAL_STATE,
 				asFormData({ email: email("ada"), password: "right" }),
+			),
+		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
+		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
+	});
+
+	it("redirects to a safe internal next path when one is provided", async () => {
+		mocks.signInEmail.mockResolvedValueOnce({} as never);
+		await expect(
+			loginAction(
+				LOGIN_INITIAL_STATE,
+				asFormData({
+					email: email("ada"),
+					password: "right",
+					next: "/dashboard/settings",
+				}),
+			),
+		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard\/settings/);
+		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard/settings");
+	});
+
+	it("falls back to /dashboard when next is not a safe internal path", async () => {
+		mocks.signInEmail.mockResolvedValueOnce({} as never);
+		await expect(
+			loginAction(
+				LOGIN_INITIAL_STATE,
+				asFormData({
+					email: email("ada"),
+					password: "right",
+					next: "https://evil.example/path",
+				}),
+			),
+		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
+		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");
+	});
+
+	it("falls back to /dashboard when next is a protocol-relative URL", async () => {
+		mocks.signInEmail.mockResolvedValueOnce({} as never);
+		await expect(
+			loginAction(
+				LOGIN_INITIAL_STATE,
+				asFormData({
+					email: email("ada"),
+					password: "right",
+					next: "//evil.example/path",
+				}),
 			),
 		).rejects.toThrow(/NEXT_REDIRECT:\/dashboard/);
 		expect(mocks.redirect).toHaveBeenCalledWith("/dashboard");

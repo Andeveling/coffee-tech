@@ -29,16 +29,15 @@ Prefix slice folders with `_` to mark them as private/colocated — never import
 Rules:
 - **kebab-case** for every file and folder name (Linux filesystem is case-sensitive; kebab avoids `Foo.tsx` vs `foo.tsx` collisions).
 - **Dotted role suffix** identifies the slice type at a glance and is greppable (`rg "\.action\.ts"`).
+- **The `_` prefix is reserved for slice folders** (`_actions/`, `_schemas/`, `_queries/`, `_components/`, `_hooks/`, `_types/`, `_utils/`, `_config/`). Files **at the feature root** (`index.ts`, `server.ts`, `client.ts`) do **not** use the `_` prefix. A leading underscore in a non-slice file is a naming smell — the convention is "slice folder = private to the feature, file at root = part of the feature surface".
 - **Components skip the suffix** — `.tsx` already identifies them; `login-form.component.tsx` adds noise.
-- **One entity per file** when the file represents a discrete unit (action, schema, query, hook, type). Co-locate closely related variants only when they share a non-trivial body.
-- **`index.ts` barrel** at the feature root exposes the public surface; import via `@/features/<name>` only.
 
 ### Component export style
 
 - **Arrow functions only**: `export const Foo = (...) => { ... }`. No `export function Foo() {}` declarations.
-- **Named exports only**: no `export default`. The barrel `index.ts` re-exports explicitly.
+- **Named exports only in feature components**: no `export default` in `features/_components/`. The barrel `index.ts` re-exports explicitly.
+- **Exception — Next route files**: `page.tsx`, `layout.tsx`, `error.tsx`, `not-found.tsx`, `loading.tsx`, `global-error.tsx`, and `route.ts` use `export default` because Next's file contract requires it. The "named exports only" rule applies to **components in `features/_components/`**, not to route files.
 - **Export name**: PascalCase. File name kebab-case. `login-form.tsx` exports `LoginForm`.
-- **Subfolders**: keep `_components/` flat by default. Promote to subfolders **only when a component group grows genuinely complex** (e.g. a reactive multi-section form: `components/form/sections/inputs/...`). No pre-emptive grouping. Barrel the subfolder if it has 3+ siblings.
 
 ### shadcn priority rule
 
@@ -66,10 +65,10 @@ Rules:
 - **Redirects**:
   - No session + private path → `/login?next=<original>`.
   - Session + `/login` or `/register` → `/dashboard` (skip auth UI for logged-in users).
-  - Honor `next=` post-login.
+  - Honor `next=` post-login (the action validates the value with `isSafeNextPath` to prevent open-redirect).
 - **better-auth wiring**: read session via `auth.api.getSessionCookie()` (Edge-safe, no DB hit). Never call Drizzle from proxy — Edge runtime has no Node APIs.
 - **Matcher**: exclude `_next/static`, `_next/image`, `favicon.ico`, and `api/auth/*` from proxy execution; auth routes go straight to the better-auth handler.
-- Defense in depth: `app/(private)/layout.tsx` re-checks the session server-side and redirects if missing — proxy is a fast path, not the only gate.
+- Defense in depth: `app/(private)/layout.tsx` re-checks the session server-side and redirects if missing — proxy is a fast path, not the only gate. The `(public)/layout.tsx` does **not** re-check — the proxy already covers the auth-UI → dashboard redirect, and the public layout stays sync (no DB hit) to render as a pure chrome shell.
 
 ### Layout nesting
 
@@ -95,8 +94,9 @@ app/layout.tsx              ← html, body, providers (theme, toaster, query cli
 - **Loading**: hybrid.
   - `app/(<group>)/<route>/loading.tsx` for route transition (consistent skeleton during navigation).
   - `<Suspense>` inside the feature for sub-pieces that fetch in parallel — React 19 makes this cheap.
-- **Server Action errors**: discriminated union returned from the action, not thrown across the boundary.
-  - Action signature: `async (input): Promise<{ ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string[]> }>`.
+- **Server Action errors**: discriminated union returned from the action, not thrown across the boundary. The exact shape depends on the consumer:
+  - **For `useActionState` consumers** (forms): `{ status: "idle" } | { status: "error"; formError: string | null; fieldErrors: Partial<Record<keyof TInput, string>> }`. The "idle" arm is the `useActionState` initial state; the "error" arm carries field + form errors.
+  - **For programmatic consumers** (server-to-server, fire-and-forget): `{ ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string[]> }`.
   - Client consumes with `useActionState` (React 19) for form-level + field-level errors.
   - Unexpected errors (network, 500) surfaced via a global toast (sonner or similar).
 
@@ -111,12 +111,9 @@ app/layout.tsx              ← html, body, providers (theme, toaster, query cli
   3. Client form: `useActionState(action, initialState)` + render de `fieldErrors[name]` por field.
 - **Zod schemas** son compartibles client↔server. La única rama server-only es la action que los ejecuta contra DB.
 
-### `lib/` vs `features/`
-
 - `lib/` = generic, framework-agnostic infra (`auth/`, `http/`, `utils/cn.ts`, `env.ts`).
-- `lib/env.ts` validates process env with zod at module load. Marked `import "server-only"` so accidental client import fails the build. Public vars (`NEXT_PUBLIC_*`) live in a separate exported `publicEnv` object; server vars never reach the client. `.env.example` mirrors the schema for onboarding.
-- `features/<x>/` = domain logic tied to a product capability.
-- Cross-feature reuse: prefer extracting a new feature (`features/_shared/` is **forbidden** — it becomes a junk drawer). If two features need the same thing, it usually belongs in `lib/` or becomes its own feature consumed by both.
+- `lib/env.ts` validates process env with zod at module load. Marked `import "server-only"` so accidental client import fails the build. **Server-only vars** (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NODE_ENV`) live here.
+- `lib/public-env.ts` validates the **client-safe** env (`NEXT_PUBLIC_*`) in a separate file. The split is intentional: a module marked `import "server-only"` cannot also export client-safe values, so the public schema gets its own file. Exposed via a frozen `publicEnv` object.
 
 ### `db/` (persistence)
 
@@ -164,11 +161,7 @@ These skills are specific to this boilerplate. Follow the convention `project-<n
 | `tailwind-4` | cn() utility, no var() in className | [SKILL.md](skills/tailwind-4/SKILL.md) |
 | `zod-4` | New API (z.email(), z.uuid()) | [SKILL.md](skills/zod-4/SKILL.md) |
 | `zustand-5` | Persist, selectors, slices | [SKILL.md](skills/zustand-5/SKILL.md) |
-| `openspec-explore` | Explore sdd specs | [SKILL.md](skills/openspec-explore/SKILL.md) |
-| `openspec-propose` | Propose sdd spec changes | [SKILL.md](skills/openspec-propose/SKILL.md) |
-| `openspec-apply-change` | Apply sdd spec changes | [SKILL.md](skills/openspec-apply-change/SKILL.md) |
-| `openspec-archive-change` | Archive sdd spec changes | [SKILL.md](skills/openspec-archive-change/SKILL.md) |
-| `engram-memory-protocol` | Memory learn protocol | [SKILL.md](skills/engram-memory-protocol/SKILL.md) |
+
 
 
 

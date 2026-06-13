@@ -2,13 +2,6 @@
 // Anything `import "server-only"` lives in `./server` (or `_actions/`) and
 // must NEVER be re-exported from here.
 
-export {
-	authClient,
-	signIn,
-	signOut,
-	signUp,
-	useSession,
-} from "@/features/auth/_client";
 export { LoginForm } from "@/features/auth/_components/login-form";
 export { RegisterForm } from "@/features/auth/_components/register-form";
 export {
@@ -24,3 +17,10 @@ export {
 	type FormFieldErrors,
 	zodIssuesToFieldErrors,
 } from "@/features/auth/_utils/zod-issues.util";
+export {
+	authClient,
+	signIn,
+	signOut,
+	signUp,
+	useSession,
+} from "@/features/auth/client";

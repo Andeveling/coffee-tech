@@ -1,0 +1,125 @@
+# Ubiquitous Language
+
+## Project structure
+
+| Term                   | Definition                                                                                  | Aliases to avoid          |
+| ---------------------- | ------------------------------------------------------------------------------------------- | ------------------------- |
+| **Feature**            | A self-contained product capability that owns its domain code under `features/<name>/`     | Module, package, app      |
+| **Slice**              | A private folder inside a feature (`_actions/`, `_schemas/`, `_queries/`, …)                | Subfolder, layer, module  |
+| **Barrel**             | The public `index.ts` of a feature that re-exports its public surface                       | Index, re-export file     |
+| **Feature surface**    | The set of symbols a feature exposes to the rest of the codebase via its barrel             | Public API                |
+| **Dotted role suffix** | The filename convention that names a file's role: `.action.ts`, `.schema.ts`, `.query.ts`   | Type suffix, role tag     |
+
+## Routing & layout
+
+| Term              | Definition                                                                            | Aliases to avoid            |
+| ----------------- | ------------------------------------------------------------------------------------- | --------------------------- |
+| **Route group**   | A folder in `app/` named `(public)` or `(private)` that gates routes by audience     | Group, route segment        |
+| **Layout file**   | A Next.js file contract (`layout.tsx`) that wraps a route group with chrome           | Shell, wrapper              |
+| **Boundary**      | A Next.js file contract (`error.tsx`, `loading.tsx`, `not-found.tsx`) for fallback UX | Error boundary, fallback     |
+| **Route file**    | A Next.js file contract that defines a route (`page.tsx`, `route.ts`)                 | Page, endpoint              |
+| **Proxy**         | The Next 16 middleware (`proxy.ts`) — single source of truth for the auth boundary    | Middleware, gate, guard     |
+| **Folder layout** | The feature-first folder arrangement convention                                      | Project layout, file layout |
+
+## Auth boundary
+
+| Term                | Definition                                                              | Aliases to avoid         |
+| ------------------- | ----------------------------------------------------------------------- | ------------------------ |
+| **Auth boundary**   | The combined responsibility of the proxy + private layout to gate routes | Auth gate, access layer  |
+| **Public prefix**   | A path the proxy whitelists so unauthenticated users can reach it       | Whitelisted path, public |
+| **Safe next path**  | A post-login `next=` query param validated against open-redirect         | Safe redirect, next URL  |
+
+## Server runtime
+
+| Term             | Definition                                                                       | Aliases to avoid   |
+| ---------------- | -------------------------------------------------------------------------------- | ------------------ |
+| **Server action** | A mutation entry point in `_actions/<name>.action.ts` marked `import "server-only"` | Action handler, mutation |
+| **Action result** | The discriminated union `{ ok: true; data: T } \| { ok: false; error; fieldErrors }` | Result type, return type |
+| **Action state**  | The `useActionState` shape `{ status: "idle" } \| { status: "error"; formError; fieldErrors }` | Form state, useActionState value |
+| **Edge runtime**  | The runtime constraint that disallows Node APIs (e.g. libsql); used by the proxy | Edge, serverless edge |
+| **Server-only**   | The `import "server-only"` marker that fails the build if imported from a client  | Server-side only    |
+
+## Validation & forms
+
+| Term            | Definition                                                              | Aliases to avoid     |
+| --------------- | ----------------------------------------------------------------------- | -------------------- |
+| **Zod schema**  | A client-safe validator in `_schemas/<name>.schema.ts`                   | Schema (ambiguous), validator |
+| **Field error** | A per-field validation message keyed by form field name                | Input error, validation error |
+| **Form error**  | A top-level error message returned alongside field errors               | Global error, form-level error |
+
+## Persistence
+
+| Term           | Definition                                                          | Aliases to avoid   |
+| -------------- | ------------------------------------------------------------------- | ------------------ |
+| **DB schema**  | A Drizzle table definition in `db/schema/<feature>.ts`              | Schema (ambiguous), table definition |
+| **Query**      | A Drizzle data-access function in `features/<x>/_queries/<name>.query.ts` | Repository, DAO    |
+| **Migration**  | A DDL change generated by drizzle-kit from the DB schema barrel     | Schema migration, DDL |
+| **Seed script**| A script in `db/` that initializes the database with baseline data  | Seed, fixture      |
+
+## UI
+
+| Term                | Definition                                                                       | Aliases to avoid   |
+| ------------------- | -------------------------------------------------------------------------------- | ------------------ |
+| **shadcn primitive** | A UI component installed from the shadcn registry into `components/ui/<kebab>.tsx` | shadcn component, UI component |
+| **shadcn-owned**    | The property of `components/ui/` files not to be hand-edited                     | Registry file      |
+| **Custom copy**     | A shadcn primitive copied into a feature and edited there when the primitive falls short | Local copy, override |
+
+## Environment
+
+| Term            | Definition                                                                    | Aliases to avoid    |
+| --------------- | ----------------------------------------------------------------------------- | ------------------- |
+| **Public env**  | Client-safe env vars (`NEXT_PUBLIC_*`) validated in `lib/public-env.ts`      | Client env, browser env |
+| **Server env**  | Secrets and server-only vars validated in `lib/env.ts`                        | Backend env, secrets |
+| **Env schema**  | The Zod schema at module load that validates process env                      | Env validator, env config |
+
+## Testing
+
+| Term         | Definition                                                          | Aliases to avoid |
+| ------------ | ------------------------------------------------------------------- | ---------------- |
+| **Unit test**| A colocated Vitest file double-suffixed (`.action.test.ts`)          | Vitest, spec     |
+| **E2E test** | A Playwright flow under `e2e/<flow>.e2e.test.ts`                    | Playwright, integration |
+
+## OpenSpec (change management)
+
+| Term         | Definition                                                          | Aliases to avoid  |
+| ------------ | ------------------------------------------------------------------- | ----------------- |
+| **Change**   | A proposed/archived modification managed by OpenSpec                | Spec, RFC         |
+| **Proposal** | The `proposal.md` artifact: what & why                              | Spec, requirement |
+| **Design**   | The `design.md` artifact: how (technical)                           | Architecture doc  |
+| **Tasks**    | The `tasks.md` artifact: implementation steps                       | TODOs, checklist  |
+| **Apply**    | The OpenSpec action that walks through tasks for implementation     | Implement, build  |
+| **Archive**  | The OpenSpec action that finalizes a completed change               | Close, ship       |
+| **Propose**  | The OpenSpec action that creates a change and generates artifacts   | Create change, open RFC |
+
+## Relationships
+
+- A **Feature** owns one or more **Slices**; slices are private to the feature.
+- Cross-feature access to a **Feature** goes only through its **Barrel** (its **feature surface**).
+- A **Server action** consumes a **Zod schema** and returns an **Action result**.
+- A form on the client binds to the **Server action** via `useActionState`, consuming the **Action state** with **field errors** and a **form error**.
+- A **Route group** wraps one or more **Route files** with a **Layout file**; **Boundaries** sit alongside them.
+- The **Proxy** is the single source of truth for the **Auth boundary**; the `(private)` layout re-checks the session as defense in depth.
+- **Public prefixes** are the only paths the **Proxy** allows without a session; everything else redirects to `/login?next=…`, where the **next** value must be a **safe next path**.
+- A **DB schema** is the source of truth; a **Migration** is generated from it; a **Query** reads it.
+- A **shadcn primitive** lives in `components/ui/` and is **shadcn-owned**; when customization is needed, the team makes a **custom copy** inside the feature.
+- **Public env** and **Server env** are validated by separate **Env schemas** because a `server-only` module cannot also export client-safe values.
+- An **OpenSpec Change** contains a **Proposal**, a **Design**, and **Tasks**; **Propose** creates it, **Apply** implements the tasks, **Archive** finalizes it.
+
+## Example dialogue
+
+> **Dev:** "I'm adding login. Where does the validator live?"
+> **Domain expert:** "In a **Zod schema** at `features/auth/_schemas/login.schema.ts`. Schemas are client-safe, so you can re-export it from the **barrel** for optimistic validation in the form."
+> **Dev:** "And the actual submit?"
+> **Domain expert:** "A **server action** in `_actions/login.action.ts` parses the same **Zod schema**, runs against the DB, and returns an **action result** — the discriminated union with `ok: true` or `ok: false` plus **field errors**. The form binds to that with `useActionState` and reads the **action state** for the **form error** and per-field messages."
+> **Dev:** "What protects the dashboard? Do I check the session in the **layout file**?"
+> **Domain expert:** "The **proxy** is the single source of truth for the **auth boundary** — it whitelists **public prefixes** and redirects everything else to `/login?next=…`. The `(private)` **layout file** re-checks server-side as defense in depth, but the routing decision lives in the **proxy**."
+
+## Flagged ambiguities
+
+- **"schema"** — used for both the **Zod schema** (validation) and the **DB schema** (Drizzle table definition). Recommendation: keep both terms; qualify with the prefix (`Zod schema` / `DB schema`) whenever the context is ambiguous.
+- **"action"** — overloaded: **server action** (a mutation file in `_actions/`), **action result** (the discriminated union a server action returns), **action state** (the `useActionState` shape consumed by the form), and **OpenSpec action** (CLI subcommands like `apply`, `archive`, `propose`). Recommendation: always say "server action" or "OpenSpec action" to disambiguate; reserve the bare word "action" only when the surrounding context is unambiguous.
+- **"public"** — overloaded: **public route group** (`(public)`, no session), **public surface** of a feature (its barrel exports), and **public env** (`NEXT_PUBLIC_*`). Recommendation: prefer "route group", "feature surface", and "client-safe env" in mixed contexts.
+- **"layout"** — a **layout file** (the Next.js `layout.tsx` contract) versus the project's **folder layout** (the feature-first architecture). Recommendation: say "layout file" or "folder layout" to disambiguate.
+- **"boundary"** — three distinct uses: **auth boundary** (proxy + private layout), **error/loading boundary** (Next `error.tsx`/`loading.tsx` files), and **feature boundary** (no cross-feature imports via private slices). Recommendation: keep the qualifier.
+- **"feature" vs "module"** — the OpenSpec change was titled `feature-auth-modules`, but "module" is not part of the project's vocabulary; the canonical term is **feature**. Recommendation: rename the change to `feature-auth` (or similar) and use "feature" consistently in change names, skill prompts, and discussion.
+- **"account"** — listed in the skill example as an alias to avoid for **User**; carried over as a guideline for this project too, even though the term has not yet appeared in conversation.

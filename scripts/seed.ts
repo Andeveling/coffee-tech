@@ -1,25 +1,31 @@
 import "dotenv/config";
-import { count } from "drizzle-orm";
-import { db, schema } from "@/db";
 
+import { auth } from "@/features/auth/server";
+
+const SEED_USER = {
+	name: "Demo User",
+	email: "[email protected]",
+	password: "hunter22",
+};
 const main = async (): Promise<void> => {
-	const [{ userCount }] = await db
-		.select({ userCount: count() })
-		.from(schema.users);
-
-	if (userCount > 0) {
-		console.log(`Skipping seed: users table already has ${userCount} row(s).`);
-		return;
+	try {
+		await auth.api.signUpEmail({
+			body: SEED_USER,
+		});
+		console.log(`Seeded demo user: ${SEED_USER.email}`);
+	} catch (err) {
+		// better-auth throws USER_ALREADY_EXISTS when the user is already in
+		// the DB. That is the expected idempotent outcome of re-running the
+		// seed script.
+		const message = err instanceof Error ? err.message : String(err);
+		if (message.includes("USER_ALREADY_EXISTS")) {
+			console.log(
+				`Skipping seed: ${SEED_USER.email} already exists in the database.`,
+			);
+			return;
+		}
+		throw err;
 	}
-
-	await db.insert(schema.users).values({
-		id: "seed-user-1",
-		email: "[email protected]",
-		name: "Demo User",
-		emailVerified: true,
-	});
-
-	console.log("Seeded 1 demo user.");
 };
 
 main().catch((err: unknown) => {

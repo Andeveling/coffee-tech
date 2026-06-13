@@ -5,11 +5,11 @@
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
-		"start": "next start",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"db:generate": "bunx --bun drizzle-kit generate",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
 		"db:migrate": "bunx --bun drizzle-kit migrate",
 		"db:push": "bunx --bun drizzle-kit push",
 		"db:studio": "bunx --bun drizzle-kit studio",
