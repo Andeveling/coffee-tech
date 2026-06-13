@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
-import { Figtree, Geist, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/cn.utils";
+import type { Metadata } from "next";
+import { ThemeProvider } from "next-themes";
+import { Figtree, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
@@ -39,7 +40,16 @@ export default function RootLayout({
 			suppressHydrationWarning
 			data-lt-installed
 		>
-			<body className="min-h-full flex flex-col">{children}</body>
+			<body className="min-h-full flex flex-col">
+				<ThemeProvider
+					attribute="class"
+					defaultTheme="system"
+					enableSystem
+					disableTransitionOnChange
+				>
+					{children}
+				</ThemeProvider>
+			</body>
 		</html>
 	);
 }
