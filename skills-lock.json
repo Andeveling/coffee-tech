@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "better-sqlite3-rebuild": {
+      "source": "mattpocock/ai-engineer-workshop-2026-project",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/better-sqlite3-rebuild/SKILL.md",
+      "computedHash": "6c922d8cc1404ebba09af2b97f274c175496d6b85083fdd1c9c4b3ede33a9625"
+    },
     "caveman": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -8,9 +14,9 @@
       "computedHash": "934433479903febc585bf6deb5f0cebc63137e3f86b7babe0aab1ecb94d6d7a4"
     },
     "grill-me": {
-      "source": "mattpocock/skills",
+      "source": "mattpocock/ai-engineer-workshop-2026-project",
       "sourceType": "github",
-      "skillPath": "skills/productivity/grill-me/SKILL.md",
+      "skillPath": ".agents/skills/grill-me/SKILL.md",
       "computedHash": "784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea"
     },
     "grill-with-docs": {
@@ -20,10 +26,10 @@
       "computedHash": "eb0e91e84277283dc2b23ed544399e53afd6b5287e5b6929f25fe8aa608e164b"
     },
     "improve-codebase-architecture": {
-      "source": "mattpocock/skills",
+      "source": "mattpocock/ai-engineer-workshop-2026-project",
       "sourceType": "github",
-      "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
-      "computedHash": "ef32aea0a8fab9b365ff9e08a95f8d353e20ca21ea46ec2e73587c86dd341351"
+      "skillPath": ".agents/skills/improve-codebase-architecture/SKILL.md",
+      "computedHash": "fd86945bac044cae984b0d1763882ce33675f7b65224175f549845857343865f"
     },
     "next-best-practices": {
       "source": "vercel-labs/next-skills",
@@ -36,6 +42,12 @@
       "sourceType": "github",
       "skillPath": ".agents/skills/prd-to-issues/SKILL.md",
       "computedHash": "64f353f655e1fe716f2f082fdb1be6fd197c0689bb839d3576b388df46eafe2a"
+    },
+    "tdd": {
+      "source": "mattpocock/ai-engineer-workshop-2026-project",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/tdd/SKILL.md",
+      "computedHash": "ad055544599481182d0079c4198e85da26677cb408a677be2da04915375f0427"
     },
     "teach": {
       "source": "mattpocock/skills",
@@ -60,6 +72,12 @@
       "sourceType": "github",
       "skillPath": "skills/deprecated/ubiquitous-language/SKILL.md",
       "computedHash": "c8968b02b83c365bc81d85cc17fb4c8854b80f5b6dece322164fff5b00142231"
+    },
+    "write-a-prd": {
+      "source": "mattpocock/ai-engineer-workshop-2026-project",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/write-a-prd/SKILL.md",
+      "computedHash": "aaf496a4cbf2a98ec461f992156ef70ce4c745cd58e1666f0c71d3315a4588f1"
     },
     "write-a-skill": {
       "source": "mattpocock/skills",

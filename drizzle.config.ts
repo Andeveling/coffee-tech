@@ -1,19 +1,14 @@
 import "dotenv/config";
 import { defineConfig } from "drizzle-kit";
 
-const url = process.env.DATABASE_URL;
-if (!url) {
-	throw new Error(
-		"DATABASE_URL is not set. Copy .env.example to .env and set it (e.g. DATABASE_URL=file:./local.db).",
-	);
-}
+import { env } from "@/lib/env";
 
 export default defineConfig({
-	schema: "./db/schema.ts",
+	schema: "./db/schema/index.ts",
 	out: "./migrations",
 	dialect: "sqlite",
 	dbCredentials: {
-		url,
+		url: env.DATABASE_URL,
 	},
 	strict: true,
 	verbose: true,

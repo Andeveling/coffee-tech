@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
-import { Field } from "@/app/(auth)/_components/field";
+import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
 	REGISTER_INITIAL_STATE,
 	registerAction,
 } from "@/app/(auth)/register/_actions";
-import { Button } from "@/components/ui/button";
 
 export default function RegisterPage() {
 	const [state, formAction, isPending] = useActionState(
@@ -18,37 +19,55 @@ export default function RegisterPage() {
 
 	return (
 		<form action={formAction} className="flex flex-col gap-4">
+			<Field data-invalid={Boolean(state.fieldErrors.name) || undefined}>
+				<FieldLabel htmlFor="name">Nombre</FieldLabel>
+				<Input
+					id="name"
+					name="name"
+					autoComplete="name"
+					disabled={isPending}
+					aria-invalid={Boolean(state.fieldErrors.name)}
+				/>
+				<FieldError>{state.fieldErrors.name}</FieldError>
+			</Field>
+			<Field data-invalid={Boolean(state.fieldErrors.email) || undefined}>
+				<FieldLabel htmlFor="email">Email</FieldLabel>
+				<Input
+					id="email"
+					name="email"
+					type="email"
+					autoComplete="email"
+					disabled={isPending}
+					aria-invalid={Boolean(state.fieldErrors.email)}
+				/>
+				<FieldError>{state.fieldErrors.email}</FieldError>
+			</Field>
+			<Field data-invalid={Boolean(state.fieldErrors.password) || undefined}>
+				<FieldLabel htmlFor="password">Contraseña</FieldLabel>
+				<Input
+					id="password"
+					name="password"
+					type="password"
+					autoComplete="new-password"
+					disabled={isPending}
+					aria-invalid={Boolean(state.fieldErrors.password)}
+				/>
+				<FieldError>{state.fieldErrors.password}</FieldError>
+			</Field>
 			<Field
-				name="name"
-				label="Nombre"
-				autoComplete="name"
-				disabled={isPending}
-				error={state.fieldErrors.name}
-			/>
-			<Field
-				name="email"
-				label="Email"
-				type="email"
-				autoComplete="email"
-				disabled={isPending}
-				error={state.fieldErrors.email}
-			/>
-			<Field
-				name="password"
-				label="Contraseña"
-				type="password"
-				autoComplete="new-password"
-				disabled={isPending}
-				error={state.fieldErrors.password}
-			/>
-			<Field
-				name="confirmPassword"
-				label="Confirmar contraseña"
-				type="password"
-				autoComplete="new-password"
-				disabled={isPending}
-				error={state.fieldErrors.confirmPassword}
-			/>
+				data-invalid={Boolean(state.fieldErrors.confirmPassword) || undefined}
+			>
+				<FieldLabel htmlFor="confirmPassword">Confirmar contraseña</FieldLabel>
+				<Input
+					id="confirmPassword"
+					name="confirmPassword"
+					type="password"
+					autoComplete="new-password"
+					disabled={isPending}
+					aria-invalid={Boolean(state.fieldErrors.confirmPassword)}
+				/>
+				<FieldError>{state.fieldErrors.confirmPassword}</FieldError>
+			</Field>
 			{state.formError ? (
 				<p className="text-destructive text-xs" role="alert">
 					{state.formError}
