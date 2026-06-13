@@ -5,6 +5,7 @@
 - Start here for cross-project norms. Prowler is a monorepo with several components.
 - Each component has an `AGENTS.md` file with specific guidelines (e.g., `api/AGENTS.md`, `ui/AGENTS.md`).
 - Component docs override this file when guidance conflicts.
+- No `src` folder — all code is in root, example: `app/`, `lib/`, `db/`.
 
 ## Available Skills
 
@@ -24,6 +25,9 @@ Use these skills for detailed patterns on-demand:
 | `openspec-propose` | Propose sdd spec changes | [SKILL.md](skills/openspec-propose/SKILL.md) |
 | `openspec-apply-change` | Apply sdd spec changes | [SKILL.md](skills/openspec-apply-change/SKILL.md) |
 | `openspec-archive-change` | Archive sdd spec changes | [SKILL.md](skills/openspec-archive-change/SKILL.md) |
+| `engram-memory-protocol` | Memory learn protocol | [SKILL.md](skills/engram-memory-protocol/SKILL.md) |
+
+
 
 ### Auto-invoke Skills
 

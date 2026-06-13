@@ -1,2 +1,63 @@
 schema: spec-driven
 defaultSchema: minimalist
+context: |
+  Coffee-tech is a Next.js 16 / React 19 / TypeScript web app. See AGENTS.md
+  and the local skills (nextjs-16, react-19, tailwind-4, zod-4, zustand-5,
+  typescript) for stack details, conventions, and auto-invoke rules.
+
+  Persistence: Drizzle ORM with `@libsql/client` (SQLite local file via
+  `DATABASE_URL`). Schema lives at `src/db/schema.ts`, migrations at
+  `drizzle/`, client singleton at `src/db/index.ts`. Auth uses better-auth
+  and depends on the `users` table shape defined there.
+
+  Idioma de los artifacts (aplica a TODO — proposal.md, specs/, design.md,
+  tasks.md, sin excepciones):
+  - El contenido entregado al usuario se escribe en español: descripciones,
+    justificaciones, explicaciones, prosa de tasks y de design, etc.
+  - Los HEADERS, marcadores de schema y palabras clave se mantienen en
+    inglés tal como el parser de OpenSpec los espera: Goal, Non-Goals,
+    Context, Why, What Changes, Capabilities, Impact, Requirement, Scenario,
+    When, Then, Given, AND, ADDED Requirements, MODIFIED Requirements,
+    REMOVED Requirements, RENAMED Requirements, Design, Tasks, Verification
+  - La IA piensa y razona internamente en inglés; el output final mezcla
+    headers/palabras clave en inglés con prosa en español
+  - Identificadores técnicos (archivos, packages, comandos CLI, paths,
+    tablas Drizzle, roles better-auth) se mantienen en su forma original
+  - Write proposals and specs in user-facing product behavior language
+  - Requirements describe the experience, observable behavior, and product contract
+  - Prefer positive user-outcome SHALL statements over implementation-negative ones
+  - Put internal mechanisms, schema details, and refactors in design.md or tasks.md
+    unless the mechanism is itself part of the user-facing contract
+
+  Project anchors (keep specs aligned with these):
+  - Domain entities referenced in specs must match the Drizzle schema names
+  - Roles referenced in specs (guest, member, admin) must match better-auth role definitions
+  - UI-related requirements must be testable in a browser; avoid CSS-class or
+    component-internal assertions
+  - Server-only modules (db client, env reads) MUST NOT be imported from
+    client components; the spec boundary is the user-visible behavior, but
+    the design must call this out
+  - Environment variables read at runtime MUST be declared in `.env.example`
+    and validated at startup; no silent fallbacks
+
+rules:
+  proposal:
+    - "Capabilities listadas como New DEBEN tener un `specs/<name>/spec.md` plan; Modified DEBE apuntar a un `openspec/specs/<name>/` existente"
+    - "Declarar non-goals explícitos cuando el cambio toca auth, persistencia o routing — son zonas que se expanden silenciosamente"
+    - "La sección Impact DEBE listar las nuevas dependencias de runtime y dev"
+  specs:
+    - "Cada Requirement DEBE tener al menos un `#### Scenario:` (4 hashtags)"
+    - "El comportamiento de auth o de forma de datos DEBE referenciar los nombres exactos de entidad/rol del schema Drizzle y la config de better-auth; no inventar alias"
+    - "Los requisitos de UI DEBEN expresarse como outcomes observables por el usuario (ej. 'el usuario ve un toast de confirmación'), no como internals de CSS o componentes"
+    - "Cuando el cambio toca la capability `data-persistence`, los scenarios DEBEN cubrir: env var faltante, schema drift y migración sobre una DB no vacía"
+  design:
+    - "Al introducir o modificar una tabla Drizzle, documentar el shape de columnas, por qué existe cada índice y la estrategia de migración (push vs generate+migrate)"
+    - "Justificar cualquier nueva dependencia de runtime con la alternativa considerada (ej. por qué libsql sobre better-sqlite3, por qué Drizzle sobre Prisma)"
+    - "Boundary client/server: marcar cada módulo nuevo como server-only, client o universal, y explicar el call path para Server Actions / Route Handlers"
+    - "Definir el rollback: para cambios de schema, la migración inversa o la consecuencia destructiva sobre los datos"
+  tasks:
+    - "Cada task DEBE ser un único checkbox (`- [ ] N.M ...`) bajo un encabezado `## N.` para que la fase de apply pueda trackear progreso"
+    - "Cuando el cambio agrega env vars, incluir tasks para actualizar `.env.example` y `.gitignore`"
+    - "Cuando el cambio agrega una nueva dependencia, incluir una task de verificación que ejecute `bunx --bun tsc --noEmit` y `bun run check`"
+    - "Cuando el cambio agrega o modifica el schema de DB, incluir tasks explícitas y separadas para `db:generate`, `db:migrate` y un smoke query"
+    - "La última fase DEBE ser una fase de Verification: typecheck, lint, `git status` limpio de secretos y archivos de DB local, y un smoke test de runtime relevante al cambio"
