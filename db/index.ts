@@ -8,7 +8,6 @@ type Schema = typeof schema;
 type Db = LibSQLDatabase<Schema>;
 
 declare global {
-	// eslint-disable-next-line no-var
 	var __coffeeTechDb: Db | undefined;
 }
 
