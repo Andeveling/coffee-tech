@@ -6,6 +6,9 @@
 		"dev": "next dev",
 		"build": "next build",
 		"start": "next start",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
 		"db:generate": "bunx --bun drizzle-kit generate",
 		"db:migrate": "bunx --bun drizzle-kit migrate",
 		"db:push": "bunx --bun drizzle-kit push",
@@ -37,16 +40,19 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.5.0",
+		"@playwright/test": "^1.60.0",
 		"@tailwindcss/postcss": "^4",
 		"@types/node": "^20",
 		"@types/react": "^19",
 		"@types/react-dom": "^19",
+		"@vitest/coverage-v8": "^4.1.8",
 		"drizzle-kit": "^0.31.10",
 		"eslint": "^9",
 		"eslint-config-next": "16.2.9",
 		"tailwindcss": "^4",
 		"tsx": "^4.22.4",
-		"typescript": "^5"
+		"typescript": "^5",
+		"vitest": "^4.1.8"
 	},
 	"ignoreScripts": [
 		"sharp",

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 const publicEnvSchema = z.object({
-	NEXT_PUBLIC_APP_URL: z
-		.string()
-		.url({ error: "NEXT_PUBLIC_APP_URL debe ser una URL válida" }),
+	NEXT_PUBLIC_APP_URL: z.url({
+		error: "NEXT_PUBLIC_APP_URL debe ser una URL válida",
+	}),
 });
 
 const parsed = publicEnvSchema.safeParse({

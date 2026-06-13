@@ -12,9 +12,7 @@ const serverEnvSchema = z.object({
 	BETTER_AUTH_SECRET: z
 		.string()
 		.min(32, { error: "BETTER_AUTH_SECRET debe tener al menos 32 caracteres" }),
-	BETTER_AUTH_URL: z
-		.string()
-		.url({ error: "BETTER_AUTH_URL debe ser una URL válida" }),
+	BETTER_AUTH_URL: z.url({ error: "BETTER_AUTH_URL debe ser una URL válida" }),
 	NODE_ENV: z
 		.enum(["development", "test", "production"])
 		.default("development"),

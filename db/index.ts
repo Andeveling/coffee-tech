@@ -1,4 +1,4 @@
-import { LibSQLDatabase, drizzle } from "drizzle-orm/libsql";
+import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
 
 import { env } from "@/lib/env";
 
@@ -22,5 +22,5 @@ if (env.NODE_ENV !== "production") {
 	globalThis.__coffeeTechDb = db;
 }
 
-export { schema };
 export type { Db, Schema };
+export { schema };
