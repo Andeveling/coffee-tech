@@ -1,7 +1,7 @@
-import { cn } from "@/lib/cn.utils";
 import type { Metadata } from "next";
-import { ThemeProvider } from "next-themes";
 import { Figtree, Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
+import { cn } from "@/lib/cn.utils";
 import "./globals.css";
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" });
