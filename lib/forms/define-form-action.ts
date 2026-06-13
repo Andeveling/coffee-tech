@@ -8,13 +8,10 @@ import type { ZodError, ZodObject, ZodRawShape, z } from "zod";
 import { isSafeNextPath } from "@/lib/forms/is-safe-next-path";
 
 /**
- * Discriminated union consumed by `useActionState` on the client.
- *
- * The "idle" arm is what `useActionState` expects as the initial state;
- * the "error" arm carries a form-level message and per-field errors.
- * The state type is parameterised on `TIn` so the `fieldErrors` keys
- * are inferred from the schema passed to the factory — adding a field
- * to the schema updates the state type without manual changes.
+ * Discriminated union for `useActionState`. The "idle" arm is the initial
+ * state; the "error" arm carries a form-level message and per-field
+ * errors. Parameterised on `TIn` so `fieldErrors` keys are inferred from
+ * the schema.
  */
 export type FormActionState<TIn extends Record<string, unknown>> =
 	| { status: "idle" }
@@ -24,7 +21,6 @@ export type FormActionState<TIn extends Record<string, unknown>> =
 			fieldErrors: Partial<Record<keyof TIn, string>>;
 	  };
 
-/** What the caller can return from `mapApiError` to override the default. */
 export type ApiErrorMapping<TIn> = {
 	formError?: string | null;
 	fieldErrors?: Partial<Record<keyof TIn, string>>;
@@ -34,22 +30,9 @@ export type DefineFormActionOptions<
 	TIn extends Record<string, unknown>,
 	TOut,
 > = {
-	/**
-	 * Zod schema. The factory validates form data with it and reads its
-	 * shape to know which fields to pre-fill. The caller can declare an
-	 * explicit generic on the factory to lock the type of the
-	 * `buildBody` / `call` inputs to the schema's inferred type.
-	 */
 	schema: ZodObject<ZodRawShape>;
-	/** Map the parsed form values to whatever the underlying call expects. */
 	buildBody: (values: TIn) => unknown;
-	/** The business call. Headers come from the active request. */
 	call: (body: unknown, headers: Headers) => Promise<TOut>;
-	/**
-	 * Where to send the user on success. Defaults to a function that
-	 * returns "/dashboard". Receives the call's output for dynamic
-	 * redirects (e.g. role-based).
-	 */
 	successRedirect?: (output: TOut) => string;
 	/**
 	 * Default form-level error when an `APIError` is raised and no
@@ -59,19 +42,12 @@ export type DefineFormActionOptions<
 	defaultFormError: string;
 	/**
 	 * Map a better-auth `APIError` to a form-level message and/or field
-	 * errors. Return `null` to rethrow the original error so the error
-	 * boundary can handle it. Non-`APIError` exceptions always rethrow.
+	 * errors. Return `null` to rethrow. Non-`APIError` exceptions always rethrow.
 	 */
 	mapApiError?: (err: APIError) => ApiErrorMapping<TIn> | null;
-	/** Optional pre-success side effect (analytics, audit log). */
 	onSuccess?: (output: TOut) => Promise<void>;
 };
 
-/**
- * What the client form imports. Bundles the action (for useActionState),
- * the initial state, the type guard, and the state type — so the form
- * does not have to import the state machinery from a sibling file.
- */
 export type FormActionBundle<TIn extends Record<string, unknown>> = {
 	action: (
 		prev: FormActionState<TIn>,
@@ -84,11 +60,6 @@ export type FormActionBundle<TIn extends Record<string, unknown>> = {
 	State: FormActionState<TIn>;
 };
 
-/**
- * Read a `FormData` payload as a flat `Record<string, string>`, dropping
- * any non-string entries (uploaded files, etc.) so the values can be
- * passed directly to a Zod schema whose fields are all strings.
- */
 const formDataToRecord = (formData: FormData): Record<string, string> => {
 	const result: Record<string, string> = {};
 	for (const [key, value] of formData.entries()) {
@@ -99,11 +70,6 @@ const formDataToRecord = (formData: FormData): Record<string, string> => {
 	return result;
 };
 
-/**
- * Project a `ZodError` down to a `{ field: firstMessage }` map, keeping
- * only the first message per field so the UI never shows two errors
- * stacked under the same input.
- */
 const zodIssuesToFieldErrors = <T extends Record<string, unknown>>(
 	error: ZodError,
 ): Partial<Record<keyof T, string>> => {
@@ -118,17 +84,10 @@ const zodIssuesToFieldErrors = <T extends Record<string, unknown>>(
 };
 
 /**
- * The factory. Hides the full parse→dispatch→map-error→redirect sequence
- * and returns a bundle the client form can consume directly. The factory
- * is server-only (`import "server-only"`) and pulls `next/headers` and
- * `next/navigation` in at the boundary so caller action files do not have
- * to import them.
- *
- * Usage: the caller can pin `TIn` with the explicit generic and pass the
- * schema's inferred type, e.g. `defineFormAction<z.infer<typeof loginSchema>>({...})`.
- * If the generic is omitted, both generics default to a permissive
- * `Record<string, unknown>` / `unknown` pair, which is useful in tests
- * and in one-off forms.
+ * Hides the parse→dispatch→map-error→redirect sequence and returns a
+ * bundle the form consumes directly. Server-only — pulls `next/headers`
+ * and `next/navigation` so caller actions do not import them. The
+ * explicit generic on the factory pins `TIn` to the schema's inferred type.
  */
 export const defineFormAction = <
 	TIn extends Record<string, unknown> = Record<string, unknown>,
@@ -151,11 +110,6 @@ export const defineFormAction = <
 	): Promise<FormActionState<TIn>> => {
 		const raw = formDataToRecord(formData);
 
-		// Pre-fill missing keys with "" so the schema's own messages
-		// surface (e.g. "Password requerido") instead of Zod's default
-		// "Invalid input: expected string, received undefined". For
-		// optional fields, "" is still a valid string so the schema
-		// accepts it; callers strip client-only fields via `buildBody`.
 		const values: Record<string, string> = {};
 		for (const key of Object.keys(opts.schema.shape)) {
 			values[key] = raw[key] ?? "";
@@ -215,5 +169,4 @@ export const defineFormAction = <
 	return { action, initialState, hasError, State: initialState };
 };
 
-// Re-export z namespace for callers that need it without a second import.
 export type { z };

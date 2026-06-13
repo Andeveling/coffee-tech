@@ -17,7 +17,6 @@ type RegisterInput = z.infer<typeof registerSchema>;
  */
 export const registerAction = defineFormAction<RegisterInput>({
 	schema: registerSchema,
-	// Strip the client-only confirmPassword before hitting the API.
 	buildBody: ({ confirmPassword: _confirm, ...rest }: RegisterInput) => rest,
 	call: (body, headers) =>
 		auth.api.signUpEmail({

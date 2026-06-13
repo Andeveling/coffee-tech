@@ -1,11 +1,6 @@
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 
-/**
- * Public path prefixes. Anything not listed is private.
- * The matcher below already excludes `_next/*`, `favicon.ico`, and `api/auth/*`,
- * so this list only needs to enumerate the application-level public routes.
- */
 const PUBLIC_PATH_PREFIXES = [
 	"/",
 	"/pricing",
@@ -30,14 +25,12 @@ export const proxy = (request: NextRequest): NextResponse => {
 	const sessionCookie = getSessionCookie(request);
 	const isLoggedIn = Boolean(sessionCookie);
 
-	// 1. Logged-in users hitting the auth UI get bounced to /dashboard.
 	if (isLoggedIn && isAuthUiPath(pathname)) {
 		const next = searchParamsGet(search, "next");
 		const target = next?.startsWith("/") ? next : "/dashboard";
 		return NextResponse.redirect(new URL(target, request.url));
 	}
 
-	// 2. Unauthenticated users hitting a private path get bounced to /login.
 	if (!isLoggedIn && !isPublicPath(pathname)) {
 		const loginUrl = new URL("/login", request.url);
 		loginUrl.searchParams.set("next", `${pathname}${search}`);
@@ -55,12 +48,8 @@ const searchParamsGet = (search: string, key: string): string | null => {
 
 export const config = {
 	/**
-	 * Matcher excludes:
-	 *   - _next/static, _next/image (static assets)
-	 *   - favicon.ico, *.svg, *.png, *.jpg, *.jpeg, *.webp, *.ico (public files)
-	 *   - api/auth/* (better-auth handler — must run server-side without proxy)
-	 *
-	 * Everything else passes through the proxy.
+	 * Excludes static assets, public files, and `api/auth/*`. The `api/auth`
+	 * exclusion is load-bearing: better-auth's handler must not run through the proxy.
 	 */
 	matcher: [
 		"/((?!_next/static|_next/image|favicon.ico|api/auth|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)",

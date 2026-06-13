@@ -13,7 +13,7 @@ import { defineFormAction } from "@/lib/forms/define-form-action";
  */
 export const loginAction = defineFormAction<z.infer<typeof loginSchema>>({
 	schema: loginSchema,
-	buildBody: (v) => v, // schema shape already matches the call input
+	buildBody: (v) => v,
 	call: (body, headers) =>
 		auth.api.signInEmail({
 			body: body as z.infer<typeof loginSchema>,

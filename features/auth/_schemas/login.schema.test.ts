@@ -42,7 +42,6 @@ describe("loginSchema", () => {
 	});
 
 	it("infers the LoginInput type from the schema", () => {
-		// Compile-time check: the literal must satisfy LoginInput.
 		const sample: LoginInput = { email: email("ada"), password: "x" };
 		expect(sample).toBeDefined();
 	});

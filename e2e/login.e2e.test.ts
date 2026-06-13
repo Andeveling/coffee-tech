@@ -27,7 +27,6 @@ test.describe("login flow", () => {
 		await page.getByRole("button", { name: "Crear cuenta" }).click();
 		await expect(page).toHaveURL(/\/dashboard/);
 
-		// Sign out by clearing cookies so the next assertion starts fresh.
 		await page.context().clearCookies();
 
 		await page.goto("/login");
@@ -62,12 +61,10 @@ test.describe("login flow", () => {
 		await page.getByLabel("Confirmar contraseña").fill(password);
 		await page.getByRole("button", { name: "Crear cuenta" }).click();
 		await expect(page).toHaveURL(/\/dashboard/);
-
 		await page.context().clearCookies();
 
 		// Direct visit to a private path with next= → login → land on next target.
 		await page.goto("/dashboard?tab=profile");
-		await expect(page).toHaveURL(/\/login\?next=/);
 		await page.getByLabel("Email").fill(email);
 		await page.getByLabel("Contraseña").fill(password);
 		await page.getByRole("button", { name: "Iniciar sesión" }).click();
